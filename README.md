@@ -74,7 +74,7 @@ const dispatch=useDispatch();
 ```
 ## 5. Connecting to UI
 
-```
+```ts
 <button className='btn' onClick={() => dispatch(decrement())}>Decrement</button>
 <button className='btn' onClick={() => dispatch(decrementByAmount(3))}>Decrement by 3</button>
 ```
@@ -93,4 +93,90 @@ import { AppDispatch, RootState } from "../store";
 
 export const useAppDispatch=useDispatch.withTypes<AppDispatch>()
 export const useAppSelector=useSelector.withTypes<RootState>()
+```
+
+## Redux Async Thunk
+# state based on fetched data
+
+- extraReducers instead of reducer. 
+- extraReducer is a function with takes (builder) as parameter
+- data fetched by `createAsyncThunk` function
+- `createAsyncThunk` accepts an action type string and a function that returns a promise, and generates a thunk that dispatches pending/fulfilled/rejected action types based on that promise
+
+```js
+//convention to name action type with sliceName/operation ie- posts/fetchPosts
+export const fetchPosts = createAsyncThunk('posts/fetchPosts', async () => {
+    const posts = await getPosts()
+    return posts
+})
+```
+
+- state will reflect loading and error situation
+
+```ts
+const initialState = {
+    posts: [],
+    isLoading: false,
+    isError: false,
+    error: ''
+}
+```
+- while calling from component it needs to be dispatched with thunk function
+
+```js
+    const dispatch = useDispatch()
+    const { posts, isLoading, isError, error } = useSelector((state) => state.posts);
+    useEffect(() => {
+        dispatch(fetchPosts())
+    }, [dispatch])
+```
+
+- complete code for using redux async thunk
+
+
+```js
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit"
+import { getPosts } from "./postApi"
+
+
+const initialState = {
+    posts: [],
+    isLoading: false,
+    isError: false,
+    error: ''
+}
+
+export const fetchPosts = createAsyncThunk('posts/fetchPosts', async () => {
+    const posts = await getPosts()
+    return posts
+})
+
+const PostsSlice = createSlice(
+    {
+    name: "posts",
+    initialState,
+    extraReducers: (builder) => {
+        builder.addCase(fetchPosts.pending, (state) => {
+            state.isError = false
+            state.isLoading = true
+        })
+
+        builder.addCase(fetchPosts.fulfilled, (state, action) => {
+            state.isError = false
+            state.isLoading = false
+            state.posts = action.payload
+        })
+
+        builder.addCase(fetchPosts.rejected, (state, action) => {
+            state.isLoading = false
+            state.isError = true
+            state.error = action.error?.message
+        })
+    },
+   
+}
+)
+
+
+export default PostsSlice.reducer
 ```
